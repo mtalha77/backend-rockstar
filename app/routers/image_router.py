@@ -37,8 +37,11 @@ async def upload_and_process_image(file: UploadFile = File(...)):
     # Run YOLO model for detection
     try:
         yolo_results = yolo_model.predict(file_path)
+        print('yolo_results')
+        print(yolo_results)
+        return {"yolo_results": str(yolo_results)}
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=str(ve))
 
     # Return YOLO results
-    return {"yolo_results": yolo_results, "file_path": f"/uploads/{file.filename}"}
+    # return {"yolo_results": yolo_results, "file_path": f"/uploads/{file.filename}"}
