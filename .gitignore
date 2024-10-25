@@ -1,0 +1,21 @@
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+*.env
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Uploaded or generated files
+uploads/
+
+# Ignore log files
+*.log
+
+# Large model files (consider Git LFS)
+
+
+# OS-specific files
+.DS_Store
+Thumbs.db

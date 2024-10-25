@@ -3,28 +3,15 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from pathlib import Path
 import os
 import shutil
-from roboflow import Roboflow  # Import the Roboflow SDK
-from dotenv import load_dotenv
+from ultralytics import YOLO  # Import the YOLOv8 model from ultralytics
 import logging
-
-# Load environment variables from the .env file
-load_dotenv()
-
-# Retrieve Roboflow API details from environment variables
-ROBOFLOW_API_KEY = os.getenv("API_KEY")  # Your API key from the .env file
-MODEL_ENDPOINT = os.getenv("MODEL_ENDPOINT")  # Your model endpoint
-VERSION = int(os.getenv("MODEL_VERSION", 2))  # Your model version (as an integer)
-
-# Initialize Roboflow using the API key
-rf = Roboflow(api_key=ROBOFLOW_API_KEY)
-project = rf.workspace().project(MODEL_ENDPOINT)
-model = project.version(VERSION).model  # Load the specific version of the model
 
 # Initialize FastAPI router
 router = APIRouter()
 
 # Define paths
 upload_folder = "uploads/"
+model_path = "models/best.pt"  # Path to the best.pt model file
 
 # Ensure the upload directory exists
 if not os.path.exists(upload_folder):
@@ -33,7 +20,16 @@ if not os.path.exists(upload_folder):
 # Enhanced error logging setup
 logging.basicConfig(level=logging.INFO)
 
-# Route to handle image upload and send to Roboflow for inference
+# Load the YOLOv8 model (best.pt)
+try:
+    model = YOLO(model_path)  # Load the best.pt model
+    logging.info(f"Loaded model from {model_path}")
+except Exception as e:
+    logging.error(f"Error loading model: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Error loading YOLO model: {str(e)}")
+
+
+# Route to handle image upload and send to YOLOv8 for inference
 @router.post("/upload/")
 async def upload_and_process_image(file: UploadFile = File(...)):
     # Check for valid image file extensions
@@ -53,26 +49,36 @@ async def upload_and_process_image(file: UploadFile = File(...)):
         logging.error(f"Failed to upload image: {str(e)}")  # Log the error
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
-    # Perform inference using Roboflow SDK
+    # Perform inference using YOLOv8 and best.pt
     try:
         logging.info(f"Performing inference on {file_path}...")  # Debugging line
-        
-        # Roboflow SDK will return results in JSON format
-        roboflow_response = model.predict(file_path, confidence=40, overlap=30).json()  # No need for `.pandas()`
-        logging.info(f"Inference results: {roboflow_response}")  # Debugging line
 
-        # Ensure roboflow_response contains the expected data
-        if 'predictions' not in roboflow_response:
-            logging.error("Predictions missing in response")
-            raise HTTPException(status_code=500, detail="Error: Predictions missing in Roboflow response")
+        # Perform inference on the uploaded image
+        results = model.predict(file_path)
+
+        # Extract predictions
+        predictions = results[0].boxes.xyxy  # Bounding boxes
+        confidences = results[0].boxes.conf  # Confidence scores
+        classes = results[0].boxes.cls  # Class indices
+        
+        # Convert to readable format
+        prediction_data = []
+        for i in range(len(predictions)):
+            prediction_data.append({
+                "class": int(classes[i].item()),
+                "confidence": confidences[i].item(),
+                "bbox": predictions[i].tolist()  # Convert tensor to list for JSON serialization
+            })
+
+        logging.info(f"Inference results: {prediction_data}")  # Debugging line
         
     except Exception as e:
-        logging.error(f"Error during Roboflow inference: {str(e)}")  # Log the error
-        raise HTTPException(status_code=500, detail=f"Error during Roboflow inference: {str(e)}")
+        logging.error(f"Error during YOLOv8 inference: {str(e)}")  # Log the error
+        raise HTTPException(status_code=500, detail=f"Error during YOLOv8 inference: {str(e)}")
 
     # Return the results and file path for the uploaded image
     try:
-        response = {"roboflow_results": roboflow_response, "file_path": f"/uploads/{file.filename}"}
+        response = {"predictions": prediction_data, "file_path": f"/uploads/{file.filename}"}
         logging.info(f"Returning response: {response}")
         return response
     except Exception as e:
