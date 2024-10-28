@@ -1,5 +1,5 @@
 # app/controllers/image_controller.py
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from pathlib import Path
 import os
 import shutil
@@ -31,7 +31,14 @@ except Exception as e:
 
 # Route to handle image upload and send to YOLOv8 for inference
 @router.post("/upload/")
-async def upload_and_process_image(file: UploadFile = File(...)):
+async def upload_and_process_image(
+    file: UploadFile = File(...),
+    sample_prediction: bool = Form(...)
+    ):
+
+    if sample_prediction:
+        return {"Return SMS": "return it from Image controller"}
+
     # Check for valid image file extensions
     valid_extensions = {".jpg", ".jpeg", ".png"}
     file_extension = Path(file.filename).suffix.lower()
@@ -67,7 +74,7 @@ async def upload_and_process_image(file: UploadFile = File(...)):
             prediction_data.append({
                 "class": int(classes[i].item()),
                 "confidence": confidences[i].item(),
-                "bbox": predictions[i].tolist()  # Convert tensor to list for JSON serialization
+                "bbox": predictions[i].tolist()  
             })
 
         logging.info(f"Inference results: {prediction_data}")  # Debugging line

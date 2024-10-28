@@ -1,7 +1,6 @@
 import cv2
 import torch
 from ultralytics import YOLO
-import json
 import numpy as np
 
 class YoloModel:

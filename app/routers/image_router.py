@@ -1,8 +1,7 @@
 # app/routers/image_router.py
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from pathlib import Path
-import os
-import shutil
+import os, json, shutil
 from app.models.yolo_model import YoloModel
 
 # Initialize router
@@ -10,7 +9,7 @@ router = APIRouter()
 
 # Define paths
 upload_folder = "uploads/"
-yolo_model = YoloModel()  # Initialize YOLO model
+yolo_model = YoloModel() 
 
 # Ensure the upload directory exists
 if not os.path.exists(upload_folder):
@@ -18,7 +17,24 @@ if not os.path.exists(upload_folder):
 
 # Route to handle image upload and YOLO processing
 @router.post("/upload/")
-async def upload_and_process_image(file: UploadFile = File(...)):
+async def upload_and_process_image(
+    file: UploadFile = File(...),
+    sample_prediction: bool = Form(...)
+    ):
+
+    if sample_prediction:
+        try:
+            sample_resp = {}
+            resp_pth = f"sample_response/{os.path.splitext(file.filename)[0]}.json"
+            with open(resp_pth, "r") as f:
+                sample_resp = json.load(f)
+
+            if sample_resp != {}:
+                return sample_resp
+        except:
+            pass
+
+    
     # Check for valid image file extensions
     valid_extensions = {".jpg", ".jpeg", ".png", ".gif"}
     file_extension = Path(file.filename).suffix.lower()
@@ -43,5 +59,3 @@ async def upload_and_process_image(file: UploadFile = File(...)):
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=str(ve))
 
-    # Return YOLO results
-    # return {"yolo_results": yolo_results, "file_path": f"/uploads/{file.filename}"}
