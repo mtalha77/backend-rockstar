@@ -19,10 +19,13 @@ if not os.path.exists(upload_folder):
 @router.post("/upload/")
 async def upload_and_process_image(
     file: UploadFile = File(...),
-    sample_prediction: bool = Form(...)
+    sample_prediction: str = Form(...)
     ):
+    
+    print('filename',  file.filename)
+    print('sample_prediction',  sample_prediction)
 
-    if sample_prediction:
+    if sample_prediction and sample_prediction.lower() == "true":
         try:
             sample_resp = {}
             resp_pth = f"sample_response/{os.path.splitext(file.filename)[0]}.json"
