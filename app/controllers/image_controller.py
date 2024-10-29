@@ -33,10 +33,10 @@ except Exception as e:
 @router.post("/upload/")
 async def upload_and_process_image(
     file: UploadFile = File(...),
-    sample_prediction: bool = Form(...)
+    sample_prediction: str = Form(...)
     ):
 
-    if sample_prediction:
+    if sample_prediction and sample_prediction.lower() == "true":
         return {"Return SMS": "return it from Image controller"}
 
     # Check for valid image file extensions
